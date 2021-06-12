@@ -1,15 +1,29 @@
 "use strict";
 
-const canvas = document.getElementById('canva');
-const ctx = canvas.getContext('2d');
-const scorebar = document.getElementById('score');
 
+//-------- var declaration --------
+const canvas = document.getElementById('canva');
 canvas.width = innerWidth;
 canvas.height = innerHeight;
+const ctx = canvas.getContext('2d');
+const scorebar = document.getElementById('score');
+const player_x = canvas.width/2;
+const player_y = canvas.height/2;
+let started = false;
+let projectiles = [];
+let score = 0;
+let animateID;
+let enemies = [];
+let particles = [];
+let spawn;
+let enemy_speed = 1;
+const proj_radius = 5;
+const speed = 4;
+
 
 //-------- class section --------
 
-class Player {
+class Obj {
   constructor (x, y, r, c){
     this.x=x;
     this.y=y;
@@ -24,33 +38,9 @@ class Player {
   }
 }
 
-class projectile {
+class moveObj extends Obj{
   constructor(x, y, r, c, v){
-    this.x=x;
-    this.y=y;
-    this.radius=r;
-    this.color=c;
-    this.velocity=v;
-  }
-  draw(){
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2, true);
-    ctx.fillStyle = this.color;
-    ctx.fill();
-  }
-  update(){
-    this.x += this.velocity.x;
-    this.y += this.velocity.y;
-    this.draw();
-  }
-}
-
-class enemy {
-  constructor(x, y, r, c, v){
-    this.x=x;
-    this.y=y;
-    this.radius=r;
-    this.color=c;
+    super(x, y, r, c);
     this.velocity=v;
   }
   draw(){
@@ -67,15 +57,10 @@ class enemy {
 }
 
 const friction = 0.98;
-class particle {
+class particle extends moveObj{
   constructor(x, y, r, c, v){
-    this.x=x;
-    this.y=y;
-    this.radius=r;
-    this.color=c;
-    this.velocity=v;
+    super(x, y, r, c, v)
     this.alpha = 1;
-    // this.pathlen=0;
   }
   draw(){
     ctx.save();
@@ -92,19 +77,16 @@ class particle {
     this.x += this.velocity.x;
     this.y += this.velocity.y;
     this.alpha -= 0.01;
-    // this.pathlen += Math.sqrt(this.velocity.x**2+this.velocity.y**2)
     this.draw();
   }
 }
 
 //-------- function section --------
 
-let projectiles = [];
-let score = 0;
-let animateID;
-let enemies = [];
-let particles = [];
-let spawn;
+
+function randInt(start, end){
+  return Math.floor(Math.random()*(end-start+1)+start);
+}
 
 function startGame(){
   Swal.fire({
@@ -124,23 +106,18 @@ function startGame(){
     allowOutsideClick:false
   }).then(()=>{
     score = 0;
+    scorebar.innerHTML = String(score);
     particles = [];
     enemies = [];
-    scorebar.innerHTML = String(score);
     projectiles = [];
-    spawnEnemies();
+    spawn = spawnEnemies();
     animate();
   });
 }
 
-function randInt(start, end){
-  return Math.floor(Math.random()*(end-start+1)+start);
-}
-
 //spawn enemy in a fixed rate
-let enemy_speed = 1;
 function spawnEnemies(){
-  spawn = setInterval(function(){
+  return setInterval(function(){
     const r = randInt(20, 35);
     let x;
     let y;
@@ -159,10 +136,9 @@ function spawnEnemies(){
       x:Math.cos(angle)*enemy_speed,
       y:Math.sin(angle)*enemy_speed
     }
-    enemies.push(new enemy(x, y, r, c, v));
+    enemies.push(new moveObj(x, y, r, c, v));
   }, 1000);
 }
-
 
 function animate(){
   animateID = requestAnimationFrame(animate);
@@ -212,6 +188,7 @@ function animate(){
       started = false;
       cancelAnimationFrame(animateID);
       startGame();
+      return;
     }
 
     //projectile-enemy detection
@@ -245,18 +222,14 @@ function animate(){
 
 //-------- main section --------
 
-//generate player
-const player_x = canvas.width/2;
-const player_y = canvas.height/2;
-const player = new Player(player_x, player_y, 15, 'white');
-let started = false;
+//generate projectile
 
 
+const player = new Obj(player_x, player_y, 15, 'white');
 player.draw()
 startGame();
-//generate projectile
-const proj_radius = 5;
-const speed = 4;
+
+
 window.addEventListener('click', function(e){
   e = e || window.event;
   const angle = Math.atan2(e.clientY-player_y, e.clientX-player_x);
@@ -264,14 +237,13 @@ window.addEventListener('click', function(e){
     x:Math.cos(angle)*speed,
     y:Math.sin(angle)*speed
   }
-  projectiles.push(new projectile(player_x, player_y, proj_radius, 'white', proj_velocity));
-  console.log(projectiles.length);
+
+  //防止按下start的時候射出一顆子彈
+  projectiles.push(new moveObj(player_x, player_y, proj_radius, 'white', proj_velocity));
   if (!started && score == 0) {
     projectiles = [];
     started = true;
   }
 });
 
-
-//generate enemy
 
