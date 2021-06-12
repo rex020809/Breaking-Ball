@@ -2,23 +2,40 @@
 
 
 //-------- var declaration --------
+
+//canvas
 const canvas = document.getElementById('canva');
+const ctx = canvas.getContext('2d');
 canvas.width = innerWidth;
 canvas.height = innerHeight;
-const ctx = canvas.getContext('2d');
+
+//score
 const scorebar = document.getElementById('score');
+let score = 0;
+
+//player
 const player_x = canvas.width/2;
 const player_y = canvas.height/2;
+const player_radius = 15;
+
+//enemy
+let enemy_speed = 1;
+
+//projectile
+const proj_radius = 5;
+const proj_speed = 4;
+
+//particle
+const friction = 0.98;
+const par_speed = 10;
+
+//game excute
 let started = false;
 let projectiles = [];
-let score = 0;
-let animateID;
 let enemies = [];
 let particles = [];
+let animateID;
 let spawn;
-let enemy_speed = 1;
-const proj_radius = 5;
-const speed = 4;
 
 
 //-------- class section --------
@@ -56,7 +73,6 @@ class moveObj extends Obj{
   }
 }
 
-const friction = 0.98;
 class particle extends moveObj{
   constructor(x, y, r, c, v){
     super(x, y, r, c, v)
@@ -188,7 +204,6 @@ function animate(){
       started = false;
       cancelAnimationFrame(animateID);
       startGame();
-      return;
     }
 
     //projectile-enemy detection
@@ -198,7 +213,7 @@ function animate(){
         score += 100;
         scorebar.innerHTML = score;
         for (let i = 0; i<enemy.radius*1.5; i++){
-          particles.push(new particle(projectile.x, projectile.y, Math.random()*3, enemy.color, {x:(Math.random()-0.5)*10, y:(Math.random()-0.5)*10}))
+          particles.push(new particle(projectile.x, projectile.y, Math.random()*3, enemy.color, {x:(Math.random()-0.5)*par_speed, y:(Math.random()-0.5)*par_speed}))
         }
         if (enemy.radius>20){
           gsap.to(enemy, 0.1, {
@@ -225,7 +240,7 @@ function animate(){
 //generate projectile
 
 
-const player = new Obj(player_x, player_y, 15, 'white');
+const player = new Obj(player_x, player_y, player_radius, 'white');
 player.draw()
 startGame();
 
@@ -234,12 +249,12 @@ window.addEventListener('click', function(e){
   e = e || window.event;
   const angle = Math.atan2(e.clientY-player_y, e.clientX-player_x);
   const proj_velocity = {
-    x:Math.cos(angle)*speed,
-    y:Math.sin(angle)*speed
+    x:Math.cos(angle)*proj_speed,
+    y:Math.sin(angle)*proj_speed
   }
-
-  //防止按下start的時候射出一顆子彈
   projectiles.push(new moveObj(player_x, player_y, proj_radius, 'white', proj_velocity));
+  
+  //防止按下start的時候射出一顆子彈
   if (!started && score == 0) {
     projectiles = [];
     started = true;
