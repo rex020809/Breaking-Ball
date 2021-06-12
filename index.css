@@ -1,0 +1,16 @@
+body {
+    margin: 0;
+    background-color: black;
+}
+
+#scoreblock {
+  position: fixed;
+  padding: 20px 20px 20px 20px;
+  user-select: none;
+}
+
+span {
+  color: white;
+  user-select: none;
+}
+
