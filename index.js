@@ -9,9 +9,15 @@ const ctx = canvas.getContext('2d');
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 
+//level
+let level = 0;
+let level_interval = 3000;
+
 //score
 const scorebar = document.getElementById('score');
 let score = 0;
+let score_add = 50;
+let score_bonus = 10;
 
 //player
 const player_x = canvas.width/2;
@@ -20,6 +26,8 @@ const player_radius = 15;
 
 //enemy
 let enemy_speed = 1;
+let enemy_acc_rate = 0.1;
+let enemy_count = 0;
 
 //projectile
 const proj_radius = 5;
@@ -113,6 +121,19 @@ function collision(obj1, obj2){
   }
 }
 
+function levelup(){
+  level += 1;
+  enemy_speed += (level-1)*enemy_acc_rate;
+  console.log(level);
+  document.getElementById('levelText').innerHTML = 'LEVEL'+ String(level);
+  $('#level').fadeIn().animate(
+    {opacity: 1}, 800, 'swing'
+  );
+  $('#level').fadeIn().animate(
+    {opacity: 0}, 800, 'swing'
+  );
+}
+
 function startGame(){
   Swal.fire({
     icon: 'success',
@@ -134,7 +155,11 @@ function startGame(){
     scorebar.innerHTML = String(score);
     particles = [];
     enemies = [];
+    level = 0;
     projectiles = [];
+    enemy_speed = 1;
+    enemy_count = 0;
+    started = true; 
     spawn = spawnEnemies();
     animate();
   });
@@ -162,6 +187,11 @@ function spawnEnemies(){
       y:Math.sin(angle)*enemy_speed
     }
     enemies.push(new moveObj(x, y, r, c, v));
+    enemy_count++;
+    if (enemy_count==10){
+      enemy_count = 0;
+      enemy_speed += enemy_acc_rate;
+    }
   }, 1000);
 }
 
@@ -200,15 +230,14 @@ function animate(){
       }, 0)
     }
   });
-
   
   //collision detection and update enemies
   enemies.forEach((enemy, e_index)=>{
     enemy.update();
 
     //end game detection
-    const dist = Math.hypot(player.x-enemy.x, player.y-enemy.y);
-    if (dist - enemy.radius - player.radius<1) {
+    // const dist = Math.hypot(player.x-enemy.x, player.y-enemy.y);
+    if (collision(enemy, player)) {
       clearInterval(spawn);
       started = false;
       cancelAnimationFrame(animateID);
@@ -217,9 +246,9 @@ function animate(){
 
     //projectile-enemy detection
     projectiles.forEach((projectile, p_index)=>{
-      const dist = Math.hypot(projectile.x-enemy.x, projectile.y-enemy.y);
-      if (dist - projectile.radius - enemy.radius < 1){
-        score += 100;
+      // const dist = Math.hypot(projectile.x-enemy.x, projectile.y-enemy.y);
+      if (collision(enemy, projectile)){
+        score += score_add;
         scorebar.innerHTML = score;
         for (let i = 0; i<enemy.radius*1.5; i++){
           particles.push(new particle(projectile.x, projectile.y, Math.random()*3, enemy.color, {x:(Math.random()-0.5)*par_speed, y:(Math.random()-0.5)*par_speed}))
@@ -232,7 +261,7 @@ function animate(){
             projectiles.splice(p_index, 1);
             }, 0)
         } else{
-          score += 100;
+          score += score_bonus;
           scorebar.innerHTML = score;
           setTimeout(()=>{
             enemies.splice(e_index, 1);
@@ -241,6 +270,12 @@ function animate(){
         }
       }
     })
+
+    //level up
+    if (score >= level*level_interval){
+      levelup();
+    }
+
   });
 }
 
@@ -253,7 +288,6 @@ const player = new Obj(player_x, player_y, player_radius, 'white');
 player.draw()
 startGame();
 
-
 window.addEventListener('click', function(e){
   e = e || window.event;
   const angle = Math.atan2(e.clientY-player_y, e.clientX-player_x);
@@ -264,10 +298,9 @@ window.addEventListener('click', function(e){
   projectiles.push(new moveObj(player_x, player_y, proj_radius, 'white', proj_velocity));
   
   //防止按下start的時候射出一顆子彈
-  if (!started && score == 0) {
+  if (!started) {
     projectiles = [];
-    started = true;
   }
-});
+}, true);
 
 

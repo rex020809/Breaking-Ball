@@ -1,16 +1,41 @@
+* {
+  -webkit-user-select:none;
+  -moz-user-select:none;
+  -o-user-select:none;
+  user-select:none;
+}
+
 body {
     margin: 0;
     background-color: black;
 }
 
+
 #scoreblock {
   position: fixed;
   padding: 20px 20px 20px 20px;
-  user-select: none;
+}
+
+#level {
+  display: flex;
+  align-items:center;
+  justify-content:center;
+  opacity: 0;
+  height: 100px;
+  width: 400px;
+  position:fixed;
+  left: calc(50vw - 200px);
+  top: calc(50vh - 50px);
+  margin : 0 auto;
+  color:white;
+}
+
+#levelText{
+  font-size: 10em;
 }
 
 span {
   color: white;
-  user-select: none;
+  cursor:default;
 }
 
