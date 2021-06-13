@@ -104,6 +104,15 @@ function randInt(start, end){
   return Math.floor(Math.random()*(end-start+1)+start);
 }
 
+function collision(obj1, obj2){
+  const dist = Math.hypot(obj1.x-obj2.x, obj1.y-obj2.y);
+  if(dist - obj1.radius - obj2.radius<1){
+    return true;
+  } else {
+    return false;
+  }
+}
+
 function startGame(){
   Swal.fire({
     icon: 'success',
