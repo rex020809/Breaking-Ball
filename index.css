@@ -5,16 +5,30 @@
   user-select:none;
 }
 
+div {
+  color:white;
+}
+
 body {
     margin: 0;
     background-color: black;
 }
 
+button {
+  width: 80px;
+  border-radius: 10px;
+  border :none;
+}
 
 #scoreblock {
-  position: fixed;
   padding: 20px 20px 20px 20px;
 }
+
+#high_record {
+  padding: 20px 20px 20px 20px;
+  text-align: right;
+}
+
 
 #level {
   display: flex;
@@ -31,11 +45,14 @@ body {
 }
 
 #levelText{
-  font-size: 10em;
+  font-size: 8em;
 }
 
 span {
-  color: white;
-  cursor:default;
+  color: inherit;
+  cursor: default;
 }
 
+.container-fluid{
+  position: fixed;
+}

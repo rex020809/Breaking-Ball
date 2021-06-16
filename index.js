@@ -11,13 +11,16 @@ canvas.height = innerHeight;
 
 //level
 let level = 0;
-let level_interval = 3000;
+let level_interval = 500;
 
 //score
 const scorebar = document.getElementById('score');
+const levelbar = document.getElementById('level_show')
 let score = 0;
 let score_add = 50;
 let score_bonus = 10;
+let highScore;
+let highLevel;
 
 //player
 const player_x = canvas.width/2;
@@ -26,24 +29,28 @@ const player_radius = 15;
 
 //enemy
 let enemy_speed = 1;
-let enemy_acc_rate = 0.1;
-let enemy_count = 0;
+let enemy_acc_rate = 0.5;
 
 //projectile
 const proj_radius = 5;
-const proj_speed = 4;
+const proj_speed = 7;
 
 //particle
 const friction = 0.98;
-const par_speed = 10;
+let par_speed = 10;
 
 //game excute
 let started = false;
 let projectiles = [];
 let enemies = [];
 let particles = [];
+let shooting = false;
 let animateID;
 let spawn;
+let shoot;
+let shoot_begin = 5;
+let shoot_per_second;
+let shoot_acc = 0.5;
 
 
 //-------- class section --------
@@ -60,6 +67,21 @@ class Obj {
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2, true);
     ctx.fillStyle = this.color;
     ctx.fill();
+  }
+}
+
+class Player extends Obj {
+  constructor(x, y, r, c){
+    super(x, y, r, c)
+    this.angle = 0.3*Math.PI;
+  }
+  draw(){
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2, true);
+    ctx.arc(this.x+Math.cos(this.angle)*this.radius, this.y+Math.sin(this.angle)*this.radius, 8, 0, Math.PI*2, true);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    // ctx.fillRect(this.x-5, this.y-20, 10, 20);
   }
 }
 
@@ -107,6 +129,39 @@ class particle extends moveObj{
 
 //-------- function section --------
 
+function parseCookie() {
+  var cookieObj = {};
+  var cookieAry = document.cookie.split(';');
+  var cookie;
+  
+  for (var i=0, l=cookieAry.length; i<l; ++i) {
+      cookie = jQuery.trim(cookieAry[i]);
+      cookie = cookie.split('=');
+      cookieObj[cookie[0]] = cookie[1];
+  }
+  return cookieObj;
+}
+
+function getCookieByName(name) {
+  var value = parseCookie()[name];
+  if (value) {
+      value = decodeURIComponent(value);
+  }
+  return value;
+}
+
+function show_high(){
+  highScore = parseInt(getCookieByName('high_score'))
+  highLevel = parseInt(getCookieByName('high_level'))
+  document.getElementById('high_score').innerHTML = highScore;
+  document.getElementById('high_level').innerHTML = highLevel;
+}
+
+function resetHigh(){
+  document.cookie = 'high_score=0';
+  document.cookie = 'high_level=0';
+  show_high();
+}
 
 function randInt(start, end){
   return Math.floor(Math.random()*(end-start+1)+start);
@@ -123,9 +178,14 @@ function collision(obj1, obj2){
 
 function levelup(){
   level += 1;
-  enemy_speed += (level-1)*enemy_acc_rate;
-  console.log(level);
+  enemy_speed += enemy_acc_rate;
+  par_speed += 0.5;
+  shoot_per_second += shoot_acc;
+  clearInterval(shoot);
+  shoots(shoot_per_second);
   document.getElementById('levelText').innerHTML = 'LEVEL'+ String(level);
+  document.getElementById('levelText').style.color = `hsl(${randInt(0, 360)}, 50%, 50%)`;
+  levelbar.innerHTML = String(level);
   $('#level').fadeIn().animate(
     {opacity: 1}, 800, 'swing'
   );
@@ -134,14 +194,43 @@ function levelup(){
   );
 }
 
+function reset(){
+  shooting = false;
+  shoot_per_second = shoot_begin;
+  par_speed = 10;
+  score = 0;
+  scorebar.innerHTML = String(score);
+  particles = [];
+  enemies = [];
+  level = 0;
+  levelbar.innerHTML = String(level);
+  projectiles = [];
+  enemy_speed = 1;
+  started = true; 
+  shoot_per_second = 5;
+  shoots(shoot_per_second)
+  spawnEnemies();
+}
+
+function shoots(shoot_per_second){
+  shoot = setInterval(function(){
+    const proj_velocity = {
+      x:Math.cos(player.angle)*proj_speed,
+      y:Math.sin(player.angle)*proj_speed
+    } 
+    projectiles.push(new moveObj(player_x, player_y, proj_radius, 'white', proj_velocity));
+  }, 1000/shoot_per_second);
+}
+
 function startGame(){
   Swal.fire({
     icon: 'success',
-    title: 'YOU GET',
-    width: '300px',
+    width: '360px',
     padding: '30px',
     html: 
-      '<h1 style="margin:0;">'+String(score)+"</h1>",
+      '<h1>YOU GET</h1>'+
+      '<h2 style="margin:0; padding:0 0 20px 0;">'+String(score)+' / LV'+String(level)+"</h2>"+
+      '<p style="margin:0;">Highest: '+String(highScore)+'/ LV'+String(highLevel)+'</p>',
     confirmButtonText: 'Start',
     showClass: {
       popup: 'animate__animated animate__fadeInDown'
@@ -151,26 +240,20 @@ function startGame(){
     },
     allowOutsideClick:false
   }).then(()=>{
-    score = 0;
-    scorebar.innerHTML = String(score);
-    particles = [];
-    enemies = [];
-    level = 0;
-    projectiles = [];
-    enemy_speed = 1;
-    enemy_count = 0;
-    started = true; 
-    spawn = spawnEnemies();
+    reset();
+    show_high();
     animate();
   });
 }
 
 //spawn enemy in a fixed rate
 function spawnEnemies(){
-  return setInterval(function(){
+  spawn = setInterval(function(){
     const r = randInt(20, 35);
     let x;
     let y;
+
+    //determine where to spawn
     if (Math.random()<0.5){
       x = Math.random() < 0.5 ? 0-r : canvas.width+r; 
       y = randInt(0-r, canvas.height+r);
@@ -178,20 +261,13 @@ function spawnEnemies(){
     else {
       x = randInt(0-r, canvas.width+r);
       y = Math.random() < 0.5 ? 0-r : canvas.height+r;
-    }    
-    const c_index = randInt(0, 360)
-    const c = `hsl(${c_index}, 50%, 50%)`;
+    }
     const angle = Math.atan2(player_y-y, player_x-x);
     const v = {
       x:Math.cos(angle)*enemy_speed,
       y:Math.sin(angle)*enemy_speed
     }
-    enemies.push(new moveObj(x, y, r, c, v));
-    enemy_count++;
-    if (enemy_count==10){
-      enemy_count = 0;
-      enemy_speed += enemy_acc_rate;
-    }
+    enemies.push(new moveObj(x, y, r, `hsl(${randInt(0, 360)}, 50%, 50%)`, v));
   }, 1000);
 }
 
@@ -199,6 +275,7 @@ function animate(){
   animateID = requestAnimationFrame(animate);
 
   // draw background
+  //ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
@@ -238,10 +315,7 @@ function animate(){
     //end game detection
     // const dist = Math.hypot(player.x-enemy.x, player.y-enemy.y);
     if (collision(enemy, player)) {
-      clearInterval(spawn);
-      started = false;
-      cancelAnimationFrame(animateID);
-      startGame();
+      endGame();
     }
 
     //projectile-enemy detection
@@ -254,7 +328,7 @@ function animate(){
           particles.push(new particle(projectile.x, projectile.y, Math.random()*3, enemy.color, {x:(Math.random()-0.5)*par_speed, y:(Math.random()-0.5)*par_speed}))
         }
         if (enemy.radius>20){
-          gsap.to(enemy, 0.1, {
+          gsap.to(enemy, 0.05, {
             radius: enemy.radius - 10
           })
           setTimeout(()=>{
@@ -279,28 +353,49 @@ function animate(){
   });
 }
 
+function endGame(){
+  started = false;
+  if (score>highScore){
+    document.cookie = 'high_score='+String(score);
+    document.cookie = 'high_level='+String(level);
+  }
+  show_high();
+  clearInterval(spawn);
+  cancelAnimationFrame(animateID);
+  clearInterval(shoot)
+  startGame();
+}
+
 //-------- main section --------
 
 //generate projectile
 
 
-const player = new Obj(player_x, player_y, player_radius, 'white');
+const player = new Player(player_x, player_y, player_radius, 'white');
+
+if (!document.cookie){
+  document.cookie = 'high_score=0';
+  document.cookie = 'high_level=0';
+}
+show_high();
 player.draw()
 startGame();
 
-window.addEventListener('click', function(e){
+window.addEventListener('mousemove', function(e){
   e = e || window.event;
   const angle = Math.atan2(e.clientY-player_y, e.clientX-player_x);
-  const proj_velocity = {
-    x:Math.cos(angle)*proj_speed,
-    y:Math.sin(angle)*proj_speed
-  }
-  projectiles.push(new moveObj(player_x, player_y, proj_radius, 'white', proj_velocity));
-  
-  //防止按下start的時候射出一顆子彈
-  if (!started) {
-    projectiles = [];
-  }
-}, true);
+  player.angle = angle;
+});
 
-
+// window.addEventListener('keydown', function(e){
+//   e = e || window.event;
+//   if (e.key=='s') {
+//     if (!shooting) {
+//       shooting = true;
+//       shoots(shoot_per_second);      
+//     } else{
+//       shooting = false;
+//       clearInterval(shoot);
+//     }
+//   }
+// });
