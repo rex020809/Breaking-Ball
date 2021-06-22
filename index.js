@@ -148,11 +148,6 @@ function getCookieByName(name) {
   let arr = document.cookie.match(new RegExp("(^| )" + name + "=([^;]*)(;|$)"));
   if (arr != null) return unescape(arr[2]); 
   return null;
-  // var value = parseCookie()[name];
-  // if (value) {
-  //     value = decodeURIComponent(value);
-  // }
-  // return value;
 }
 
 //-------- excutive function --------
