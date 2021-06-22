@@ -86,7 +86,6 @@ class Player extends Obj {
     ctx.arc(this.x+Math.cos(this.angle)*this.radius, this.y+Math.sin(this.angle)*this.radius, 8, 0, Math.PI*2, true);
     ctx.fillStyle = this.color;
     ctx.fill();
-    // ctx.fillRect(this.x-5, this.y-20, 10, 20);
   }
 }
 
@@ -132,7 +131,7 @@ class particle extends moveObj{
   }
 }
 
-//-------- function section --------
+//-------- basic function --------
 
 function randInt(start, end){
   return Math.floor(Math.random()*(end-start+1)+start);
@@ -145,28 +144,21 @@ function setcookie(name, value, daysTolive) {
   document.cookie = cookie;
 }
 
-function parseCookie() {
-  var cookieObj = {};
-  var cookieAry = document.cookie.split(';');
-  var cookie;
-  
-  for (var i=0, l=cookieAry.length; i<l; ++i) {
-      cookie = jQuery.trim(cookieAry[i]);
-      cookie = cookie.split('=');
-      cookieObj[cookie[0]] = cookie[1];
-  }
-  return cookieObj;
+function getCookieByName(name) {
+  let arr = document.cookie.match(new RegExp("(^| )" + name + "=([^;]*)(;|$)"));
+  if (arr != null) return unescape(arr[2]); 
+  return null;
+  // var value = parseCookie()[name];
+  // if (value) {
+  //     value = decodeURIComponent(value);
+  // }
+  // return value;
 }
 
-function getCookieByName(name) {
-  var value = parseCookie()[name];
-  if (value) {
-      value = decodeURIComponent(value);
-  }
-  return value;
-}
+//-------- excutive function --------
 
 function startGame(){
+  showHigh();
   Swal.fire({
     icon: 'success',
     width: '360px',
@@ -184,7 +176,7 @@ function startGame(){
     },
     allowOutsideClick:false
   }).then(()=>{
-    reset();
+    resetGame();
     animate();
   });
 }
@@ -199,7 +191,7 @@ function animate(){
   // draw the player
   player.draw();
 
-  // explosion animation
+  // update particles (explosion animation)
   particles.forEach((particle, index)=>{
     if (particle.alpha<=0.01){
       setTimeout(()=>{
@@ -225,25 +217,29 @@ function animate(){
     }
   });
   
-  //collision detection and update enemies
+  // update enemies (collision detection)
   enemies.forEach((enemy, e_index)=>{
     enemy.update();
 
-    //end game detection
+    // end game detection
     if (collision(enemy, player)) {
       endGame();
     }
 
-    //projectile-enemy detection
+    // hit enemy detection
     projectiles.forEach((projectile, p_index)=>{
       if (collision(enemy, projectile)){
         updateScore(score_add);
-        for (let i = 0; i<enemy.radius*1.5; i++){
+
+        //generate particles
+        for (let i = 0; i<enemy.radius*1.5; i++){ 
           particles.push(new particle(projectile.x, projectile.y, Math.random()*3, enemy.color, {x:(Math.random()-0.5)*par_speed, y:(Math.random()-0.5)*par_speed}))
         }
+        // shrivel the enemy 
         gsap.to(enemy, 0.05, {
           radius: enemy.radius - 10
         })
+        // eliminate enemy too small
         if (enemy.radius>enemy_die){
           setTimeout(()=>{
             projectiles.splice(p_index, 1);
@@ -267,8 +263,10 @@ function animate(){
 
 function endGame(){
   if (score>highScore){
-    document.cookie = 'high_score='+String(score);
-    document.cookie = 'high_level='+String(level);
+    setcookie('high_score', String(score), 30);
+    setcookie('high_level', String(level), 30);
+    // document.cookie = 'high_score='+String(score);
+    // document.cookie = 'high_level='+String(level);
   }
   showHigh();
   clearInterval(spawn);
@@ -277,7 +275,7 @@ function endGame(){
   startGame();
 }
 
-function reset(){
+function resetGame(){
   shoot_per_second = shoot_begin;
   par_speed = par_speed_init;
   score = 0;
@@ -371,8 +369,10 @@ function updateScore(add){
 
 //reset High button
 function resetHigh(){
-  document.cookie = 'high_score=0';
-  document.cookie = 'high_level=0';
+  setcookie('high_score', '0', 30);
+  setcookie('high_level', '0', 30);
+  // document.cookie = 'high_score=0';
+  // document.cookie = 'high_level=0';
   showHigh();
 }
 
@@ -382,8 +382,8 @@ function resetHigh(){
 const player = new Player(player_x, player_y, player_radius, 'white');
 
 if (!document.cookie){
-  document.cookie = 'high_score=0';
-  document.cookie = 'high_level=0';
+  setcookie('high_score', '0', 30);
+  setcookie('high_score', '0', 30);
 }
 
 window.addEventListener('mousemove', function(e){
@@ -392,5 +392,4 @@ window.addEventListener('mousemove', function(e){
   player.angle = angle;
 });
 
-showHigh();
 startGame();
